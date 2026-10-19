@@ -198,7 +198,7 @@ fn simplify_sequence_makes_a_clean_copy() {
         assert_eq!(w[0].end(), w[1].start);
     }
     assert_eq!(r["closedGaps"].as_i64().unwrap(), orig.video_tracks[0].items[1].duration.0);
-    // effects: Gaussian Blur and the demo's Lumetri gone, Motion & Opacity kept
+    // effects: Gaussian Blur and the demo's Color Grade gone, Motion & Opacity kept
     assert!(q.video_tracks.iter().flat_map(|t| &t.items).all(|i| i.effects.iter().all(|e| e.def().is_some_and(|d| d.intrinsic))));
     assert!(q.video_tracks[0].items[0].effect("motion").is_some());
     // the original is untouched
@@ -277,7 +277,7 @@ fn flash_cue_markers_round_trip() {
     assert!(s.active_sequence().unwrap().markers.iter().all(|m| m.kind != MarkerKind::FlashCue));
 }
 
-/// Apply Video Transition (Cmd+D) at both ends of an adjustment layer with Lumetri Color fades the
+/// Apply Video Transition (Cmd+D) at both ends of an adjustment layer with Grade Color fades the
 /// grade in and out, as on a clip: halfway through each dissolve the picture is about halfway
 /// between the original and the graded frame, not the original with a hard cut after it.
 #[test]
@@ -285,8 +285,8 @@ fn cmd_d_on_an_adjustment_layer_fades_its_effects_in_and_out() {
     let mut s = demo();
     let item = s.execute("file.newAdjustmentLayer", json!({"seconds": 4})).unwrap()["item"].as_u64().unwrap();
     let layer = s.execute("timeline.place", json!({"item": item, "track": "V3", "seconds": 1.5})).unwrap()["clips"][0].as_u64().unwrap();
-    s.execute("effects.apply", json!({"clips": [layer], "effect": "lumetri"})).unwrap();
-    s.execute("effects.setParam", json!({"clip": layer, "effect": "lumetri", "param": "exposure", "value": 2.0})).unwrap();
+    s.execute("effects.apply", json!({"clips": [layer], "effect": "color_grade"})).unwrap();
+    s.execute("effects.setParam", json!({"clip": layer, "effect": "color_grade", "param": "exposure", "value": 2.0})).unwrap();
     s.execute("timeline.select", json!({"clips": [layer]})).unwrap();
     for edge in ["in", "out"] {
         s.execute("sequence.applyVideoTransition", json!({"clip": layer, "edge": edge, "frames": 24})).unwrap();

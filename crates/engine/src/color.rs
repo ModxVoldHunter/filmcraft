@@ -1,13 +1,13 @@
 //! Colour commands: colour management (`sequence.colorSettings`, `clip.interpretFootage`,
-//! `color.spaces`, `media.colorInfo`), the project LUT library (`lut.*`), Lumetri LUT slots and
-//! section switches (`lumetri.*`).
+//! `color.spaces`, `media.colorInfo`), the project LUT library (`lut.*`), Color Grade LUT slots and
+//! section switches (`color_grade.*`).
 //!
-//! Lumetri commands address a clip by `clip` (default: the first selected video clip with
-//! Lumetri Color, else the first selected video clip — Lumetri is added if missing).
+//! Color Grade commands address a clip by `clip` (default: the first selected video clip with
+//! Color Grade, else the first selected video clip — Color Grade is added if missing).
 //!
-//! Lumetri Presets (Effects panel): `lumetri.presets` lists them, `lumetri.applyPreset` adds a
-//! Lumetri Color configured as the preset to clips (one undo step), `lumetri.presetThumbnails`
-//! renders a folder's thumbnail grid (our Lumetri on the procedural preview picture) to a PNG.
+//! Color Grade Presets (Effects panel): `color_grade.presets` lists them, `color_grade.applyPreset` adds a
+//! Color Grade configured as the preset to clips (one undo step), `color_grade.presetThumbnails`
+//! renders a folder's thumbnail grid (our Color Grade on the procedural preview picture) to a PNG.
 
 use filmcraft_color::{ColorSpace, Lut, LutFormat, WorkingSpace};
 use filmcraft_project::{ClipId, ItemId, ItemKind, ParamValue, ProjectLut, TrackKind};
@@ -45,11 +45,11 @@ pub(crate) fn commands() -> Vec<CommandSpec> {
             interpret,
         ),
         query("color.spaces", "List Colour Spaces", "{}", spaces),
-        query("lumetri.presets", "List Lumetri Presets", r#"{"folder":str?}"#, list_presets),
-        spec("lumetri.applyPreset", "Apply Lumetri Preset", &[], r#"{"name":str,"clips":[id]?}"#, has_seq, apply_preset),
+        query("color_grade.presets", "List Color Grade Presets", r#"{"folder":str?}"#, list_presets),
+        spec("color_grade.applyPreset", "Apply Color Grade Preset", &[], r#"{"name":str,"clips":[id]?}"#, has_seq, apply_preset),
         query(
-            "lumetri.presetThumbnails",
-            "Lumetri Preset Thumbnails",
+            "color_grade.presetThumbnails",
+            "Color Grade Preset Thumbnails",
             r#"{"folder":str?,"names":[str]?,"width":n=160,"columns":n=4,"path":str?}"#,
             preset_thumbnails,
         ),
@@ -58,14 +58,14 @@ pub(crate) fn commands() -> Vec<CommandSpec> {
         query("lut.list", "List LUTs", "{}", list),
         spec("lut.remove", "Remove LUT", &[], r#"{"id":str}"#, always, remove),
         query("lut.export", "Export LUT", r#"{"lut":"lib:<id>"|"builtin:<id>","path":str,"format":"cube"|"3dl"?}"#, export),
-        spec("lumetri.setInputLut", "Set Input LUT", &[], r#"{"clip":id?,"lut":"lib:<id>"|"builtin:<id>"|""?,"path":str?}"#, has_seq, |s, p| {
+        spec("color_grade.setInputLut", "Set Input LUT", &[], r#"{"clip":id?,"lut":"lib:<id>"|"builtin:<id>"|""?,"path":str?}"#, has_seq, |s, p| {
             set_lut(s, p, "input_lut")
         }),
-        spec("lumetri.setLook", "Set Creative Look", &[], r#"{"clip":id?,"lut":"lib:<id>"|"builtin:<id>"|""?,"path":str?}"#, has_seq, |s, p| {
+        spec("color_grade.setLook", "Set Creative Look", &[], r#"{"clip":id?,"lut":"lib:<id>"|"builtin:<id>"|""?,"path":str?}"#, has_seq, |s, p| {
             set_lut(s, p, "look_lut")
         }),
         spec(
-            "lumetri.applyMatch",
+            "color_grade.applyMatch",
             "Apply Match",
             &[],
             r#"{"clip":id?,"referenceTime":ticks?|"referenceFrame":n?|"referenceTimecode":str?,"faceDetection":bool=true}"#,
@@ -73,8 +73,8 @@ pub(crate) fn commands() -> Vec<CommandSpec> {
             apply_match,
         ),
         spec(
-            "lumetri.setSection",
-            "Toggle Lumetri Section",
+            "color_grade.setSection",
+            "Toggle Color Grade Section",
             &[],
             r#"{"clip":id?,"section":"basic"|"creative"|"curves"|"wheels"|"hsl"|"vignette","on":bool?}"#,
             has_seq,
@@ -162,11 +162,11 @@ fn export(s: &mut Session, p: &Value) -> Result<Value> {
     Ok(json!({"path": path, "bytes": text.len()}))
 }
 
-/// The target clip and the index of its Lumetri effect (applying Lumetri when missing).
+/// The target clip and the index of its Color Grade effect (applying Color Grade when missing).
 pub(crate) fn lumetri_clip(s: &mut Session, p: &Value, cmd: &str) -> Result<(ClipId, usize)> {
     let seq = s.active_sequence().ok_or_else(|| bad(cmd, "no active sequence"))?;
     let video = |c: &ClipId| seq.find_item(*c).is_some_and(|(t, _)| seq.track(t).is_some_and(|t| t.kind == TrackKind::Video));
-    let has = |c: &ClipId| seq.find_item(*c).is_some_and(|(_, it)| it.effects.iter().any(|e| e.effect == "lumetri"));
+    let has = |c: &ClipId| seq.find_item(*c).is_some_and(|(_, it)| it.effects.iter().any(|e| e.effect == "color_grade"));
     let clip = match clip_p(p, "clip") {
         Some(c) if video(&c) => c,
         Some(_) => return Err(bad(cmd, "not a video clip")),
@@ -176,19 +176,19 @@ pub(crate) fn lumetri_clip(s: &mut Session, p: &Value, cmd: &str) -> Result<(Cli
         }
     };
     if !has(&clip) {
-        s.execute("effects.apply", json!({"clips": [clip.0], "effect": "lumetri"}))?;
+        s.execute("effects.apply", json!({"clips": [clip.0], "effect": "color_grade"}))?;
     }
     let seq = s.active_sequence().ok_or_else(|| bad(cmd, "no active sequence"))?;
-    let idx = seq.find_item(clip).and_then(|(_, it)| it.effects.iter().position(|e| e.effect == "lumetri")).ok_or_else(|| bad(cmd, "no Lumetri"))?;
+    let idx = seq.find_item(clip).and_then(|(_, it)| it.effects.iter().position(|e| e.effect == "color_grade")).ok_or_else(|| bad(cmd, "No Color Grade"))?;
     Ok((clip, idx))
 }
 
-/// Set a Lumetri parameter (inserting it when an older project's instance lacks it).
+/// Set a Color Grade parameter (inserting it when an older project's instance lacks it).
 pub(crate) fn set_lumetri_param(s: &mut Session, clip: ClipId, idx: usize, param: &str, v: ParamValue, label: &str) -> Result<()> {
     let param = param.to_string();
     s.edit_sequence(label, |q, _, _| {
         let (_, it) = q.find_item_mut(clip).ok_or(filmcraft_edit::EditError::NoItem(clip))?;
-        let e = it.effects.get_mut(idx).ok_or_else(|| bad("lumetri", "no Lumetri"))?;
+        let e = it.effects.get_mut(idx).ok_or_else(|| bad("color_grade", "No Color Grade"))?;
         e.params.entry(param.clone()).or_insert_with(|| filmcraft_project::Param::new(v.clone())).value = v.clone();
         Ok(())
     })?;
@@ -196,7 +196,7 @@ pub(crate) fn set_lumetri_param(s: &mut Session, clip: ClipId, idx: usize, param
 }
 
 fn set_lut(s: &mut Session, p: &Value, param: &str) -> Result<Value> {
-    let cmd = if param == "input_lut" { "lumetri.setInputLut" } else { "lumetri.setLook" };
+    let cmd = if param == "input_lut" { "color_grade.setInputLut" } else { "color_grade.setLook" };
     let r = match (str_p(p, "path"), str_p(p, "lut")) {
         (Some(path), _) => {
             let path = path.to_string();
@@ -214,7 +214,7 @@ fn set_lut(s: &mut Session, p: &Value, param: &str) -> Result<Value> {
 }
 
 fn set_section(s: &mut Session, p: &Value) -> Result<Value> {
-    let sec = str_p(p, "section").ok_or_else(|| bad("lumetri.setSection", "need `section`"))?;
+    let sec = str_p(p, "section").ok_or_else(|| bad("color_grade.setSection", "need `section`"))?;
     let param = match sec.to_ascii_lowercase().as_str() {
         "basic" | "basic correction" => "basic_on",
         "creative" => "creative_on",
@@ -222,16 +222,16 @@ fn set_section(s: &mut Session, p: &Value) -> Result<Value> {
         "wheels" | "color wheels" | "color wheels & match" => "wheels_on",
         "hsl" | "hsl secondary" => "hsl_on",
         "vignette" => "vignette_on",
-        o => return Err(bad("lumetri.setSection", format!("unknown section `{o}`"))),
+        o => return Err(bad("color_grade.setSection", format!("unknown section `{o}`"))),
     };
-    let (clip, idx) = lumetri_clip(s, p, "lumetri.setSection")?;
+    let (clip, idx) = lumetri_clip(s, p, "color_grade.setSection")?;
     let cur = s
         .active_sequence()
         .and_then(|q| q.find_item(clip))
         .and_then(|(_, it)| it.effects.get(idx).and_then(|e| e.param(param)).and_then(|v| v.value.as_bool()))
         .unwrap_or(param != "hsl_on");
     let v = bool_p(p, "on").unwrap_or(!cur);
-    set_lumetri_param(s, clip, idx, param, ParamValue::Bool(v), "Lumetri Section")?;
+    set_lumetri_param(s, clip, idx, param, ParamValue::Bool(v), "Color Grade Section")?;
     Ok(json!({"clip": clip.0, "param": param, "on": v}))
 }
 
@@ -388,12 +388,12 @@ fn list_presets(_: &mut Session, p: &Value) -> Result<Value> {
     Ok(json!({"folders": filmcraft_render::lumetri_presets::FOLDERS, "presets": v}))
 }
 
-/// Lumetri Presets ▸ apply: a new Lumetri Color configured as the preset on each video clip
+/// Color Grade Presets ▸ apply: a new Color Grade configured as the preset on each video clip
 /// (standard effects go before the intrinsic ones, like `effects.apply`).
 fn apply_preset(s: &mut Session, p: &Value) -> Result<Value> {
-    let cmd = "lumetri.applyPreset";
+    let cmd = "color_grade.applyPreset";
     let name = str_p(p, "name").ok_or_else(|| bad(cmd, "need `name`"))?;
-    let preset = filmcraft_render::lumetri_presets::find(name).ok_or_else(|| bad(cmd, format!("no Lumetri preset `{name}`")))?;
+    let preset = filmcraft_render::lumetri_presets::find(name).ok_or_else(|| bad(cmd, format!("No Color Grade preset `{name}`")))?;
     let clips = crate::commands::clips_p(s, p);
     if clips.is_empty() {
         return Err(bad(cmd, "select clips first"));
@@ -417,7 +417,7 @@ fn apply_preset(s: &mut Session, p: &Value) -> Result<Value> {
 }
 
 fn preset_thumbnails(_: &mut Session, p: &Value) -> Result<Value> {
-    let cmd = "lumetri.presetThumbnails";
+    let cmd = "color_grade.presetThumbnails";
     let presets = presets_of(p);
     if presets.is_empty() {
         return Err(bad(cmd, "no presets match"));
@@ -435,22 +435,22 @@ fn preset_thumbnails(_: &mut Session, p: &Value) -> Result<Value> {
     Ok(out)
 }
 
-/// Lumetri ▸ Color Wheels & Match ▸ Apply Match (see `filmcraft_render::color_match`): match the
+/// Color Grade ▸ Color Wheels & Match ▸ Apply Match (see `filmcraft_render::color_match`): match the
 /// clip at the playhead to the sequence frame at the reference time. Sets the three wheels, their
 /// lightness and Basic saturation in one undo step.
 fn apply_match(s: &mut Session, p: &Value) -> Result<Value> {
-    let (clip, idx) = lumetri_clip(s, p, "lumetri.applyMatch")?;
-    let seq_id = s.state.active_sequence.ok_or_else(|| bad("lumetri.applyMatch", "no active sequence"))?;
-    let reference_t = time_p(s, p, "reference").ok_or_else(|| bad("lumetri.applyMatch", "need `referenceTime`, `referenceFrame` or `referenceTimecode`"))?;
+    let (clip, idx) = lumetri_clip(s, p, "color_grade.applyMatch")?;
+    let seq_id = s.state.active_sequence.ok_or_else(|| bad("color_grade.applyMatch", "no active sequence"))?;
+    let reference_t = time_p(s, p, "reference").ok_or_else(|| bad("color_grade.applyMatch", "need `referenceTime`, `referenceFrame` or `referenceTimecode`"))?;
     let skin = bool_p(p, "faceDetection").unwrap_or(true);
-    let q = s.active_sequence().ok_or_else(|| bad("lumetri.applyMatch", "no active sequence"))?;
-    let (_, it) = q.find_item(clip).ok_or_else(|| bad("lumetri.applyMatch", "no such clip"))?;
+    let q = s.active_sequence().ok_or_else(|| bad("color_grade.applyMatch", "no active sequence"))?;
+    let (_, it) = q.find_item(clip).ok_or_else(|| bad("color_grade.applyMatch", "no such clip"))?;
     let t = s.playhead().clamp(it.start, it.end() - filmcraft_time::Tick(1));
     if it.range().contains(reference_t) {
-        return Err(bad("lumetri.applyMatch", "the reference frame is inside the clip being matched; pick a frame from another shot"));
+        return Err(bad("color_grade.applyMatch", "the reference frame is inside the clip being matched; pick a frame from another shot"));
     }
     let base = it.effects[idx].clone();
-    // the current shot as Lumetri sees it: the clip with its Lumetri switched off
+    // the current shot as Color Grade sees it: the clip with its Color Grade switched off
     let mut probe = (*s.project).clone();
     if let Some((_, pi)) = probe.sequence_mut(seq_id).and_then(|q| q.find_item_mut(clip)) {
         pi.effects[idx].enabled = false;
@@ -458,7 +458,7 @@ fn apply_match(s: &mut Session, p: &Value) -> Result<Value> {
     let provider = s.media.provider(s.project.clone(), s.services.clone());
     let opts = filmcraft_render::RenderOptions { scale: 0.25, working_output: true, ..Default::default() };
     let current =
-        filmcraft_render::render_clip(&probe, seq_id, clip, t, opts, &provider).ok_or_else(|| bad("lumetri.applyMatch", "the clip has no picture"))?;
+        filmcraft_render::render_clip(&probe, seq_id, clip, t, opts, &provider).ok_or_else(|| bad("color_grade.applyMatch", "the clip has no picture"))?;
     let reference = filmcraft_render::render_sequence(&s.project, seq_id, reference_t, opts, &provider);
     let m = filmcraft_render::color_match::solve(&current, &reference, &base, skin);
     let v2 = |a: [f32; 2]| ParamValue::Vec2(filmcraft_geom::Vec2::new(a[0] as f64, a[1] as f64));
@@ -474,7 +474,7 @@ fn apply_match(s: &mut Session, p: &Value) -> Result<Value> {
     ];
     s.edit_sequence("Apply Match", |q, _, _| {
         let (_, it) = q.find_item_mut(clip).ok_or(filmcraft_edit::EditError::NoItem(clip))?;
-        let e = it.effects.get_mut(idx).ok_or_else(|| bad("lumetri.applyMatch", "no Lumetri"))?;
+        let e = it.effects.get_mut(idx).ok_or_else(|| bad("color_grade.applyMatch", "No Color Grade"))?;
         for (k, v) in &values {
             let prm = e.params.entry(k.to_string()).or_insert_with(|| filmcraft_project::Param::new(v.clone()));
             prm.keyframes.clear();

@@ -115,7 +115,7 @@ FilmCraft is a non-linear editor for people who know Premiere: the same panels, 
 <table>
   <tr>
     <td width="34%" valign="top" align="center">
-      <img src="docs/images/filmcraft-lumetri.png" alt="The Color Grade panel on Charade (1963): Basic Correction sliders with coloured temperature and tint tracks, collapsed Creative and Curves sections, shadow, midtone and highlight colour wheels, and HSL Secondary and Vignette toggles"><br>
+      <img src="docs/images/filmcraft-color_grade.png" alt="The Color Grade panel on Charade (1963): Basic Correction sliders with coloured temperature and tint tracks, collapsed Creative and Curves sections, shadow, midtone and highlight colour wheels, and HSL Secondary and Vignette toggles"><br>
       <sub><b>The Color Grade panel.</b> Basic Correction, Color Wheels and every other section, each with its own on/off switch.</sub>
     </td>
     <td width="66%" valign="top" align="center">
@@ -230,7 +230,7 @@ Every menu item, button, slider and drag in FilmCraft is a **command** with an i
 {"method": "engine.execute", "params": {"command": "timeline.place",
   "params": {"item": 1, "track": "V1", "seconds": 0, "sourceIn": 284298240000000, "duration": 1270080000000}}}
 {"method": "engine.execute", "params": {"command": "effects.setParam",
-  "params": {"clip": 87, "effect": "lumetri", "param": "curve_luma", "value": [[0,0],[0.25,0.21],[0.75,0.82],[1,1]]}}}
+  "params": {"clip": 87, "effect": "color_grade", "param": "curve_luma", "value": [[0,0],[0.25,0.21],[0.75,0.82],[1,1]]}}}
 {"method": "ui.screenshot", "params": {"path": "frame.png"}}
 ```
 

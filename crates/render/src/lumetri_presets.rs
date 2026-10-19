@@ -1,5 +1,5 @@
-//! Lumetri Presets (Effects panel ▸ Lumetri Presets): built-in Lumetri Color looks, and their
-//! thumbnails rendered by our own Lumetri on a generated preview picture.
+//! Color Grade Presets (Effects panel ▸ Color Grade Presets): built-in Color Grade looks, and their
+//! thumbnails rendered by our own Color Grade on a generated preview picture.
 //!
 //! The presets are original work: parameter values chosen by FilmCraft contributors, named
 //! descriptively (no third-party look names, LUTs or preview images). The preview picture
@@ -15,10 +15,10 @@ use filmcraft_time::Tick;
 use crate::Image;
 use crate::effects::{FxCtx, apply};
 
-/// One preset: a Lumetri Color instance with these parameters (the rest at their defaults).
+/// One preset: a Color Grade instance with these parameters (the rest at their defaults).
 #[derive(Clone, Debug)]
 pub struct LumetriPreset {
-    /// Sub-folder of Lumetri Presets.
+    /// Sub-folder of Color Grade Presets.
     pub folder: &'static str,
     pub name: &'static str,
     pub description: &'static str,
@@ -26,13 +26,13 @@ pub struct LumetriPreset {
 }
 
 impl LumetriPreset {
-    /// A Lumetri Color effect instance configured as the preset.
+    /// A Color Grade effect instance configured as the preset.
     pub fn instance(&self) -> EffectInstance {
-        let mut e = match find_effect("lumetri") {
+        let mut e = match find_effect("color_grade") {
             Some(def) => def.instance(),
             // A bare instance named after the effect; the preset's parameters are added below.
             None => EffectInstance {
-                effect: "lumetri".into(),
+                effect: "color_grade".into(),
                 enabled: true,
                 params: Default::default(),
                 masks: Vec::new(),
@@ -236,7 +236,7 @@ pub fn thumbnail(preset: &LumetriPreset, w: usize, h: usize) -> Image {
 }
 
 /// A grid of thumbnails (`cols` columns of `w`×`h` cells, 4 px gaps over a dark background), in
-/// the order given: the Effects panel's thumbnail view of a Lumetri Presets folder.
+/// the order given: the Effects panel's thumbnail view of a Color Grade Presets folder.
 pub fn grid(presets: &[LumetriPreset], cols: usize, w: usize, h: usize) -> Image {
     const GAP: usize = 4;
     let cols = cols.max(1);
@@ -268,7 +268,7 @@ mod tests {
         names.sort_unstable();
         names.dedup();
         assert_eq!(names.len(), all.len(), "unique names");
-        let def = find_effect("lumetri").unwrap();
+        let def = find_effect("color_grade").unwrap();
         let base = preview_image(64, 36);
         for p in &all {
             assert!(FOLDERS.contains(&p.folder), "{}", p.name);

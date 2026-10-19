@@ -1233,7 +1233,7 @@ pub struct Project {
     pub items: BTreeMap<ItemId, ProjectItem>,
     /// Monotonic id source for all id types.
     pub next_id: u64,
-    /// The project's LUT library (Lumetri Input LUT / Creative Look "Browse…"). LUT files are
+    /// The project's LUT library (Color Grade Input LUT / Creative Look "Browse…"). LUT files are
     /// embedded, so projects render without the original files.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub luts: Vec<ProjectLut>,
@@ -1319,7 +1319,7 @@ impl ProjectView {
     pub const MAX_PLAYHEAD: Tick = Tick(10_000_000 * TICKS_PER_SECOND);
 }
 
-/// A LUT imported into the project (`lut.import`). Lumetri refers to it as `lib:<id>`.
+/// A LUT imported into the project (`lut.import`). Color Grade refers to it as `lib:<id>`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ProjectLut {
     pub id: String,

@@ -1,4 +1,4 @@
-//! Headless UI tests of the M8.9 / M12.6 panels: Lumetri Scopes (layouts, the settings menu,
+//! Headless UI tests of the M8.9 / M12.6 panels: Video Scopes (layouts, the settings menu,
 //! footer), Metadata (edit a field by typing, undo), Timecode, Events, Progress and the Reference
 //! Monitor, each opened from Window ▸ and driven by automation id through the control channel.
 //!
@@ -159,7 +159,7 @@ fn every_panel_opens_from_the_window_menu() {
     let menu = d.ok("ui.menu.list", json!({}));
     let window: Vec<String> =
         menu.as_array().unwrap().iter().filter(|m| m["path"] == json!(["Window"])).filter_map(|m| m["label"].as_str().map(str::to_string)).collect();
-    for p in ["Events", "Lumetri Scopes", "Metadata", "Progress", "Project Notes", "Reference Monitor", "Timecode"] {
+    for p in ["Events", "Video Scopes", "Metadata", "Progress", "Project Notes", "Reference Monitor", "Timecode"] {
         assert!(window.iter().any(|w| w == p), "{p} not in Window: {window:?}");
     }
     for (panel, key) in [

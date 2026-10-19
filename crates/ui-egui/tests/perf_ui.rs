@@ -176,7 +176,7 @@ fn a_newer_revision_keeps_the_frame_being_rendered() {
         }
         panic!("the frame queue never emptied");
     };
-    // the clip with Lumetri Color at full resolution: tens of milliseconds on the CPU
+    // the clip with Color Grade at full resolution: tens of milliseconds on the CPU
     let seq = app.session.state.active_sequence.unwrap();
     let rate = app.session.active_sequence().unwrap().settings.frame_rate;
     let frame = rate.frame_at(filmcraft_time::Tick::from_seconds_f64(15.0));

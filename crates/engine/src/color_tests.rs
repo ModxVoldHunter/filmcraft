@@ -23,7 +23,7 @@ fn pick_clip(s: &mut Session) -> ClipId {
 fn lumetri_text(s: &Session, clip: ClipId, p: &str) -> String {
     let q = s.active_sequence().unwrap();
     let (_, it) = q.find_item(clip).unwrap();
-    let e = it.effects.iter().find(|e| e.effect == "lumetri").unwrap();
+    let e = it.effects.iter().find(|e| e.effect == "color_grade").unwrap();
     match e.param(p).map(|v| &v.value) {
         Some(ParamValue::Text(t)) => t.clone(),
         _ => String::new(),
@@ -55,7 +55,7 @@ fn import_lut_set_input_and_look_then_undo() {
     // a LUT that swaps red and blue
     let path = tmp("swap.cube");
     std::fs::write(&path, Lut::from_cube(Lut3d::from_fn(17, |c| [c[2], c[1], c[0]])).to_cube()).unwrap();
-    let r = s.execute("lumetri.setInputLut", json!({"path": path})).unwrap();
+    let r = s.execute("color_grade.setInputLut", json!({"path": path})).unwrap();
     let lref = r["lut"].as_str().unwrap().to_string();
     assert!(lref.starts_with("lib:"));
     assert_eq!(s.project.luts.len(), 1);
@@ -66,15 +66,15 @@ fn import_lut_set_input_and_look_then_undo() {
     let again = s.execute("lut.import", json!({"path": path})).unwrap();
     assert_eq!(again["reused"], true);
     // Input LUT section switch: Basic Correction off bypasses it
-    s.execute("lumetri.setSection", json!({"section": "basic", "on": false})).unwrap();
+    s.execute("color_grade.setSection", json!({"section": "basic", "on": false})).unwrap();
     let off = mean(&s.render_program(0.125).unwrap());
     assert!((off[0] - before[0]).abs() < 0.01, "{off:?} vs {before:?}");
-    s.execute("lumetri.setSection", json!({"section": "basic"})).unwrap();
+    s.execute("color_grade.setSection", json!({"section": "basic"})).unwrap();
     // built-in look by reference
-    s.execute("lumetri.setLook", json!({"lut": "builtin:look-monochrome"})).unwrap();
+    s.execute("color_grade.setLook", json!({"lut": "builtin:look-monochrome"})).unwrap();
     let mono = mean(&s.render_program(0.125).unwrap());
     assert!((mono[0] - mono[2]).abs() < 0.03, "{mono:?}");
-    assert!(s.execute("lumetri.setLook", json!({"lut": "lib:nope"})).is_err());
+    assert!(s.execute("color_grade.setLook", json!({"lut": "lib:nope"})).is_err());
     // the library and the references survive save/load
     let lib = s.execute("lut.list", json!({})).unwrap();
     assert_eq!(lib["library"].as_array().unwrap().len(), 1);
@@ -119,16 +119,16 @@ fn export_builtin_and_library_luts() {
 fn set_param_fills_in_parameters_missing_from_old_instances() {
     let mut s = demo();
     let clip = pick_clip(&mut s);
-    s.execute("effects.apply", json!({"clips": [clip.0], "effect": "lumetri"})).unwrap();
+    s.execute("effects.apply", json!({"clips": [clip.0], "effect": "color_grade"})).unwrap();
     // simulate an instance saved before the section switches existed
     s.edit_sequence("strip", |q, _, _| {
         let (_, it) = q.find_item_mut(clip).unwrap();
-        let e = it.effects.iter_mut().find(|e| e.effect == "lumetri").unwrap();
+        let e = it.effects.iter_mut().find(|e| e.effect == "color_grade").unwrap();
         e.params.remove("vignette_on");
         Ok(())
     })
     .unwrap();
-    s.execute("effects.setParam", json!({"clip": clip.0, "effect": "lumetri", "param": "vignette_on", "value": false})).unwrap();
+    s.execute("effects.setParam", json!({"clip": clip.0, "effect": "color_grade", "param": "vignette_on", "value": false})).unwrap();
 }
 
 #[test]
@@ -139,11 +139,11 @@ fn apply_match_grades_the_clip_towards_the_reference() {
     // reference: the middle of the last clip on V1 (a different shot)
     let other = q.video_tracks[0].items.iter().rfind(|i| i.id != clip).unwrap();
     let reference = other.start + filmcraft_time::Tick(other.duration.0 / 2);
-    let r = s.execute("lumetri.applyMatch", json!({"referenceTime": reference.0, "faceDetection": true})).unwrap();
+    let r = s.execute("color_grade.applyMatch", json!({"referenceTime": reference.0, "faceDetection": true})).unwrap();
     let (before, after) = (r["distanceBefore"].as_f64().unwrap(), r["distanceAfter"].as_f64().unwrap());
     assert!(after < before * 0.8, "match improves the statistics distance: {r}");
     let q = s.active_sequence().unwrap();
-    let e = q.find_item(clip).unwrap().1.effects.iter().find(|e| e.effect == "lumetri").unwrap().clone();
+    let e = q.find_item(clip).unwrap().1.effects.iter().find(|e| e.effect == "color_grade").unwrap().clone();
     let moved = ["wheel_shadows", "wheel_midtones", "wheel_highlights"]
         .iter()
         .any(|w| e.param(w).and_then(|p| p.value.as_vec2()).is_some_and(|v| v.x.abs() + v.y.abs() > 1e-3));
@@ -151,12 +151,12 @@ fn apply_match_grades_the_clip_towards_the_reference() {
     // one undo step
     s.execute("edit.undo", json!({})).unwrap();
     let q = s.active_sequence().unwrap();
-    let e = q.find_item(clip).unwrap().1.effects.iter().find(|e| e.effect == "lumetri").unwrap();
+    let e = q.find_item(clip).unwrap().1.effects.iter().find(|e| e.effect == "color_grade").unwrap();
     assert_eq!(e.param("wheel_midtones").and_then(|p| p.value.as_vec2()).map(|v| v.x), Some(0.0));
     // a reference inside the clip itself is refused
     let inside = s.playhead();
-    assert!(s.execute("lumetri.applyMatch", json!({"referenceTime": inside.0})).is_err());
-    assert!(s.execute("lumetri.applyMatch", json!({})).is_err());
+    assert!(s.execute("color_grade.applyMatch", json!({"referenceTime": inside.0})).is_err());
+    assert!(s.execute("color_grade.applyMatch", json!({})).is_err());
 }
 
 #[test]
@@ -199,17 +199,17 @@ fn interpret_footage_and_sequence_colour_settings() {
 fn lumetri_presets_list_apply_and_thumbnails() {
     let mut s = demo();
     let clip = pick_clip(&mut s);
-    let r = s.execute("lumetri.presets", json!({})).unwrap();
+    let r = s.execute("color_grade.presets", json!({})).unwrap();
     assert_eq!(r["folders"], json!(["Cinematic", "Film Emulation", "Monochrome", "Technical"]));
-    let mono = s.execute("lumetri.presets", json!({"folder": "monochrome"})).unwrap();
+    let mono = s.execute("color_grade.presets", json!({"folder": "monochrome"})).unwrap();
     assert!(mono["presets"].as_array().unwrap().iter().all(|p| p["folder"] == "Monochrome"));
-    // apply: one undo step adding a configured Lumetri Color before the intrinsic effects
+    // apply: one undo step adding a configured color_grade Color before the intrinsic effects
     let before = s.active_sequence().unwrap().find_item(clip).unwrap().1.effects.len();
-    let r = s.execute("lumetri.applyPreset", json!({"name": "Neutral Mono"})).unwrap();
+    let r = s.execute("color_grade.applyPreset", json!({"name": "Neutral Mono"})).unwrap();
     assert_eq!(r["clips"], 1);
     let it = s.active_sequence().unwrap().find_item(clip).unwrap().1.clone();
     assert_eq!(it.effects.len(), before + 1);
-    let k = it.effects.iter().position(|e| e.effect == "lumetri").unwrap();
+    let k = it.effects.iter().position(|e| e.effect == "color_grade").unwrap();
     assert!(it.effects[k + 1..].iter().all(|e| e.def().is_some_and(|d| d.intrinsic)) || k + 1 == it.effects.len());
     assert_eq!(it.effects[k].param("saturation").unwrap().value, ParamValue::Float(0.0));
     let img = s.render_program(0.25).unwrap();
@@ -217,10 +217,10 @@ fn lumetri_presets_list_apply_and_thumbnails() {
     assert!(grey, "the program is black and white");
     s.execute("edit.undo", json!({})).unwrap();
     assert_eq!(s.active_sequence().unwrap().find_item(clip).unwrap().1.effects.len(), before);
-    assert!(s.execute("lumetri.applyPreset", json!({"name": "No Such Look"})).is_err());
+    assert!(s.execute("color_grade.applyPreset", json!({"name": "No Such Look"})).is_err());
     // thumbnails of a folder, written as a PNG
-    let path = tmp("lumetri-presets.png");
-    let r = s.execute("lumetri.presetThumbnails", json!({"folder": "Technical", "width": 64, "columns": 3, "path": path})).unwrap();
+    let path = tmp("color_grade-presets.png");
+    let r = s.execute("color_grade.presetThumbnails", json!({"folder": "Technical", "width": 64, "columns": 3, "path": path})).unwrap();
     let n = r["presets"].as_array().unwrap().len();
     assert_eq!((r["width"].as_u64(), r["height"].as_u64()), (Some(3 * 68 + 4), Some((n.div_ceil(3) * 40 + 4) as u64)));
     assert!(std::fs::read(&path).unwrap().starts_with(b"\x89PNG"));
@@ -231,8 +231,8 @@ fn hdr_lumetri_and_mastering_metadata_through_commands() {
     let mut s = demo();
     let clip = pick_clip(&mut s);
     s.execute("sequence.colorSettings", json!({"workingSpace": "rec2100-pq"})).unwrap();
-    s.execute("effects.apply", json!({"clips": [clip.0], "effect": "lumetri"})).unwrap();
-    let idx = s.active_sequence().unwrap().find_item(clip).unwrap().1.effects.iter().position(|e| e.effect == "lumetri").unwrap();
+    s.execute("effects.apply", json!({"clips": [clip.0], "effect": "color_grade"})).unwrap();
+    let idx = s.active_sequence().unwrap().find_item(clip).unwrap().1.effects.iter().position(|e| e.effect == "color_grade").unwrap();
     // +1 stop doubles the light of the (SDR) clip in the PQ working space: no clipping at
     // 203 cd/m², the HDR working output keeps the values above reference white
     let base = s.render_program_working(0.25).unwrap();
@@ -243,7 +243,7 @@ fn hdr_lumetri_and_mastering_metadata_through_commands() {
         assert!((m1[k] / m0[k] - 2.0).abs() < 0.08, "channel {k}: {m0:?} → {m1:?}");
     }
     assert!(up.px.as_chunks::<4>().0.iter().any(|p| p[1] > 1.2), "values above reference white survive");
-    // HDR White / HDR Specular / HDR Range are ordinary Lumetri parameters
+    // HDR White / HDR Specular / HDR Range are ordinary color_grade parameters
     s.execute("effects.setParam", json!({"clip": clip.0, "effect": idx, "param": "hdr_white", "value": 2000.0})).unwrap();
     s.execute("effects.setParam", json!({"clip": clip.0, "effect": idx, "param": "hdr_specular", "value": -50.0})).unwrap();
     s.execute("effects.setParam", json!({"clip": clip.0, "effect": idx, "param": "curves_hdr_range", "value": 4000.0})).unwrap();

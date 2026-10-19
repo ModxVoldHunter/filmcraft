@@ -17,7 +17,7 @@ pub mod graphics_templates;
 pub mod import_mode;
 pub mod interchange_export;
 pub mod keyboard;
-pub mod lumetri;
+pub mod color_grade;
 pub mod masks;
 pub mod media_browser;
 pub mod media_dialogs;
@@ -84,7 +84,7 @@ pub fn show(app: &mut FilmcraftApp, ui: &mut egui::Ui, p: PanelKind, rect: Rect)
         PanelKind::Effects => effects::show(app, ui, rect),
         PanelKind::EffectControls => effect_controls::show(app, ui, rect),
         PanelKind::AudioMeters => meters::show(app, ui, rect),
-        PanelKind::LumetriColor => lumetri::show(app, ui, rect),
+        PanelKind::LumetriColor => color_grade::show(app, ui, rect),
         PanelKind::Properties if graphics::graphic_selected(app) => graphics::properties(app, ui, rect),
         PanelKind::Properties => effect_controls::properties_panel(app, ui, rect),
         PanelKind::EssentialGraphics => graphics_templates::essential_graphics(app, ui, rect),
@@ -159,10 +159,10 @@ pub fn dragged_template(ui: &egui::Ui) -> Option<String> {
 pub fn start_drag_effect(ui: &egui::Ui, id: &str) {
     ui.ctx().data_mut(|d| d.insert_temp(payload_id(), Some(DragPayloadBox(DragPayload::Effect(id.to_string())))));
 }
-/// Prefix of a dragged effect payload that names a Lumetri preset rather than an effect id.
-pub const LUMETRI_PRESET_PREFIX: &str = "lumetri:";
-/// A Lumetri preset (Effects ▸ Lumetri Presets) dragged onto a clip: an effect payload
-/// `lumetri:<name>` the Timeline applies with `lumetri.applyPreset`.
+/// Prefix of a dragged effect payload that names a Color Grade preset rather than an effect id.
+pub const LUMETRI_PRESET_PREFIX: &str = "color_grade:";
+/// A Color Grade preset (Effects ▸ Color Grade Presets) dragged onto a clip: an effect payload
+/// `color_grade:<name>` the Timeline applies with `color_grade.applyPreset`.
 pub fn start_drag_lumetri_preset(ui: &egui::Ui, name: &str) {
     start_drag_effect(ui, &format!("{LUMETRI_PRESET_PREFIX}{name}"));
 }

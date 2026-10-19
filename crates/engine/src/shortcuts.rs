@@ -53,7 +53,7 @@ pub const PANELS: &[&str] = &[
     "Essential Graphics",
     "Text",
     "Properties",
-    "Lumetri Color",
+    " Color",
 ];
 
 pub const DEFAULT_PRESET: &str = "FilmCraft Default";

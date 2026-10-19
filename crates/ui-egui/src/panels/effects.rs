@@ -1,11 +1,11 @@
 //! Effects panel: searchable folder tree of presets, audio/video effects and transitions (from the
 //! effect definitions). Drag onto a clip or edit point; double-click applies to the selection.
 //!
-//! Lumetri Presets: each preset row has a thumbnail (our Lumetri on the procedural preview
+//! Color Grade Presets: each preset row has a thumbnail (our Color Grade on the procedural preview
 //! picture, `filmcraft_render::lumetri_presets`); double-click (or right-click ▸ Apply to Selected
-//! Clips, `effects.presetMenu.apply`) applies it (`lumetri.applyPreset`), and dragging it onto a
+//! Clips, `effects.presetMenu.apply`) applies it (`color_grade.applyPreset`), and dragging it onto a
 //! Timeline clip applies it to that clip (rows and grid cells alike).
-//! When the panel is wide (maximized), clicking a Lumetri Presets folder shows its presets as a
+//! When the panel is wide (maximized), clicking a Color Grade Presets folder shows its presets as a
 //! thumbnail grid to the right of the tree. Automation ids: `effects.lumetriPreset.<name>`,
 //! `effects.presetGrid` (the grid area), `effects.presetGrid.<name>`.
 
@@ -24,7 +24,7 @@ pub fn show(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
     crate::widgets::search_field(&mut child, &mut q, tl!("Search effects"), sr.width(), &t);
     app.ui.effects_search = q.clone();
     let body = Rect::from_min_max(pos2(rect.min.x, sr.max.y + 6.0), rect.max);
-    // wide panel: the tree on the left, the Lumetri Presets thumbnail grid on the right
+    // wide panel: the tree on the left, the Color Grade Presets thumbnail grid on the right
     let grid_area = (body.width() > 640.0).then(|| Rect::from_min_max(pos2(body.min.x + 300.0, body.min.y), body.max));
     let body = match grid_area {
         Some(g) => Rect::from_min_max(body.min, pos2(g.min.x - 4.0, body.max.y)),
@@ -48,7 +48,7 @@ pub fn show(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
                 }
                 continue;
             }
-            if top == "Lumetri Presets" {
+            if top == "Color Grade Presets" {
                 if let Some(name) = lumetri_rows(app, ui, &filter) {
                     lumetri_apply = Some(name);
                 }
@@ -124,7 +124,7 @@ pub fn show(app: &mut FilmcraftApp, ui: &mut egui::Ui, rect: Rect) {
         lumetri_apply = Some(name);
     }
     if let Some(name) = lumetri_apply
-        && let Err(e) = app.session.execute("lumetri.applyPreset", json!({"name": name}))
+        && let Err(e) = app.session.execute("color_grade.applyPreset", json!({"name": name}))
     {
         app.ui.status = e.to_string();
     }
@@ -169,7 +169,7 @@ fn folder_row(app: &mut FilmcraftApp, ui: &mut egui::Ui, key: &str, depth: usize
     open
 }
 
-/// Right-click menu of a Lumetri preset: Apply to Selected Clips (automation id
+/// Right-click menu of a Color Grade preset: Apply to Selected Clips (automation id
 /// `effects.presetMenu.apply`). True when chosen.
 fn apply_menu(app: &mut FilmcraftApp, resp: &egui::Response) -> bool {
     let mut chosen = false;
@@ -186,7 +186,7 @@ fn apply_menu(app: &mut FilmcraftApp, resp: &egui::Response) -> bool {
 
 /// A preset's thumbnail texture (rendered once per size, cached by name).
 fn preset_texture(app: &mut FilmcraftApp, ctx: &egui::Context, p: &filmcraft_render::lumetri_presets::LumetriPreset, w: usize) -> egui::TextureId {
-    let name = format!("lumetri-preset-{}-{w}", p.name);
+    let name = format!("color_grade-preset-{}-{w}", p.name);
     if let Some((id, _)) = app.texture_existing(&name) {
         return id;
     }
@@ -203,12 +203,12 @@ fn preset_texture(app: &mut FilmcraftApp, ctx: &egui::Context, p: &filmcraft_ren
     app.texture_for(ctx, &name, key, &rgba)
 }
 
-/// The Lumetri Presets folder of the tree: sub-folders and preset rows with thumbnails. Returns
+/// The Color Grade Presets folder of the tree: sub-folders and preset rows with thumbnails. Returns
 /// the preset to apply (double-click).
 fn lumetri_rows(app: &mut FilmcraftApp, ui: &mut egui::Ui, filter: &str) -> Option<String> {
     use filmcraft_render::lumetri_presets as lp;
     let t = app.tokens;
-    let top = "Lumetri Presets";
+    let top = "Color Grade Presets";
     let presets: Vec<lp::LumetriPreset> = lp::presets().into_iter().filter(|p| crate::i18n::matches_query(p.name, filter)).collect();
     if !filter.is_empty() && presets.is_empty() {
         return None;
@@ -259,7 +259,7 @@ fn lumetri_rows(app: &mut FilmcraftApp, ui: &mut egui::Ui, filter: &str) -> Opti
     apply
 }
 
-/// The wide Effects panel's thumbnail grid of the selected Lumetri Presets folder. Returns the
+/// The wide Effects panel's thumbnail grid of the selected Color Grade Presets folder. Returns the
 /// preset to apply (double-click).
 fn preset_grid(app: &mut FilmcraftApp, ui: &mut egui::Ui, area: Rect) -> Option<String> {
     use filmcraft_render::lumetri_presets as lp;
@@ -279,7 +279,7 @@ fn preset_grid(app: &mut FilmcraftApp, ui: &mut egui::Ui, area: Rect) -> Option<
         }
         let pic = Rect::from_min_size(cell.min, vec2(cw, ch));
         let tex = preset_texture(app, ui.ctx(), p, 160);
-        let resp = ui.interact(cell, egui::Id::new(("lumetri-grid", p.name)), Sense::click_and_drag()).on_hover_text(crate::i18n::t(p.description));
+        let resp = ui.interact(cell, egui::Id::new(("color_grade-grid", p.name)), Sense::click_and_drag()).on_hover_text(crate::i18n::t(p.description));
         ui.painter().rect_filled(cell, 3.0, if resp.hovered() { t.hover } else { t.field_bg });
         ui.painter().image(tex, pic.shrink(2.0), Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), Color32::WHITE);
         let label = ui.painter().layout(crate::i18n::t(p.name).to_string(), Tokens::ui(11.0), t.text, cw - 6.0);

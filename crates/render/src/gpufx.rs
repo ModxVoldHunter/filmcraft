@@ -175,7 +175,7 @@ pub enum FxOp {
         warn: bool,
         warning_color: [f32; 3],
     },
-    Lumetri {
+    ColorGrade {
         gains: [f32; 3],
         exposure: f32,
         contrast: f32,
@@ -234,7 +234,7 @@ pub const GPU_EFFECTS: &[&str] = &[
     "alpha_adjust",
     "vignette",
     "video_limiter",
-    "lumetri",
+    "color_grade",
 ];
 
 /// `Image::transformed` without the mip path: the destination rectangle it writes and the inverse.
@@ -501,7 +501,7 @@ impl FxOp {
                 let wc = dec([c[0], c[1], c[2]]);
                 FxOp::VideoLimiter { max: 1.0 + clip_level / 100.0, comp: comp_val, axis, warn, warning_color: wc }
             }
-            "lumetri" => {
+            "color_grade" => {
                 use crate::effects::{curve_param, is_identity_curve, wheel_rgb};
                 let (basic_on, creative_on, vignette_on) = (on(e, "basic_on"), on(e, "creative_on"), on(e, "vignette_on"));
                 let gs = grade_space(e, cx, "hdr_white");
@@ -552,7 +552,7 @@ impl FxOp {
                 let gains = [1.0 + 0.35 * temp, 1.0 - 0.3 * tint, 1.0 - 0.35 * temp];
                 let aspect = if h > 0 { (w as f32 / h as f32).max(1e-4) } else { 1.0 };
 
-                FxOp::Lumetri {
+                FxOp::ColorGrade {
                     gains,
                     exposure,
                     contrast,
@@ -620,7 +620,7 @@ impl FxOp {
             FxOp::AlphaAdjust { opacity, .. } => opacity.is_finite(),
             FxOp::Vignette { amount, midpoint, roundness, feather, target } => fin(&[*amount, *midpoint, *roundness, *feather]) && fin(target),
             FxOp::VideoLimiter { max, comp, axis, warning_color, .. } => *axis <= 3 && max.is_finite() && comp.is_finite() && fin(warning_color),
-            FxOp::Lumetri { gains, exposure, contrast, hl, sh, wh, bl, sat, faded, vib, st, ht, va, vmid, vround, vfeather, aspect, gpu_capable, .. } => {
+            FxOp::ColorGrade { gains, exposure, contrast, hl, sh, wh, bl, sat, faded, vib, st, ht, va, vmid, vround, vfeather, aspect, gpu_capable, .. } => {
                 *gpu_capable
                     && fin(gains)
                     && fin(&[*exposure, *contrast, *hl, *sh, *wh, *bl, *sat, *faded, *vib])
@@ -922,7 +922,7 @@ impl FxOp {
                     out.map(enc_to_linear)
                 });
             }
-            FxOp::Lumetri {
+            FxOp::ColorGrade {
                 gains,
                 exposure,
                 contrast,
@@ -1008,7 +1008,7 @@ impl FxOp {
     }
 }
 
-/// Horizontal scale of the Lumetri vignette's coordinates for a Roundness of `vround`
+/// Horizontal scale of the Color Grade vignette's coordinates for a Roundness of `vround`
 /// (−1 … 1) on a frame `aspect` wide. At 0 the vignette is an ellipse that follows the
 /// frame; positive values move it towards a circle (1 = a true circle), negative values
 /// stretch it into a wider oval. Non-finite or out-of-range input never yields NaN.

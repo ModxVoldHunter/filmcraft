@@ -186,7 +186,7 @@ fn steps(op: &FxOp) -> Vec<Step> {
         FxOp::VideoLimiter { max, comp, axis, warn, warning_color } => {
             out.push(step(OP_VIDEO_LIMITER, [*axis, *warn as u32, 0, 0], &[*max, *comp, warning_color[0], warning_color[1], warning_color[2]]));
         }
-        FxOp::Lumetri {
+        FxOp::ColorGrade {
             gains,
             exposure,
             contrast,

@@ -79,7 +79,7 @@ pub fn build_sequence_fx(s: &mut Session, w: u32, h: u32, layers: &[(ItemId, f64
                 for (k, id) in per_layer.get(i).copied().unwrap_or(&[]).iter().enumerate() {
                     let mut e = find_effect(id).unwrap_or_else(|| panic!("effect {id}")).instance();
                     let set: &[(&str, f64)] = match *id {
-                        "lumetri" => &[("temperature", 18.0), ("contrast", 22.0)],
+                        "color_grade" => &[("temperature", 18.0), ("contrast", 22.0)],
                         "sharpen" => &[("amount", 40.0)],
                         "gaussian_blur" => &[("blurriness", 8.0)],
                         "brightness_contrast" => &[("brightness", 10.0), ("contrast", 15.0)],
@@ -741,7 +741,7 @@ pub fn scenario_session(name: &str) -> Option<(Session, ItemId)> {
         }
         "after-preview" => {
             let a = import(&mut s, &fixture("a1080.mp4")?);
-            let seq = build_sequence(&mut s, 1920, 1080, &[(a, 100.0, None, 0.0, 100.0)], &["lumetri", "sharpen", "levels", "tint"], 20.0);
+            let seq = build_sequence(&mut s, 1920, 1080, &[(a, 100.0, None, 0.0, 100.0)], &["color_grade", "sharpen", "levels", "tint"], 20.0);
             s.edit("marks", |p, _| {
                 let q = p.sequence_mut(seq).expect("seq");
                 q.mark_in = Some(Tick::ZERO);

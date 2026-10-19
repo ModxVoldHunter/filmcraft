@@ -396,8 +396,8 @@ fn build_effects() -> Vec<EffectDef> {
             ],
         ),
         video(
-            "lumetri",
-            "Lumetri Color",
+            "color_grade",
+            "Color Grade",
             COLOR_CORR,
             vec![
                 grp(b("basic_on", "Basic Correction", true), "Basic Correction"),
@@ -844,7 +844,7 @@ fn build_effects() -> Vec<EffectDef> {
     v.extend(crate::graphic::layer_defs());
     // YUV badge for the colour/intrinsic set
     for e in &mut v {
-        if matches!(e.id, "brightness_contrast" | "proc_amp" | "crop" | "gaussian_blur" | "tint" | "lumetri") {
+        if matches!(e.id, "brightness_contrast" | "proc_amp" | "crop" | "gaussian_blur" | "tint" | "color_grade") {
             e.yuv = true;
         }
     }

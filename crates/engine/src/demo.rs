@@ -153,7 +153,7 @@ fn build_demo(pool: &MediaPool) -> Option<(Project, ItemId)> {
         o.set_at(r.tick_of(95), ParamValue::Float(0.0));
     }
     // Grade on the dunes shot.
-    if let Some(mut lum) = find_effect("lumetri").map(|d| d.instance()) {
+    if let Some(mut lum) = find_effect("color grade").map(|d| d.instance()) {
         lum.params.get_mut("temperature").map(|v| v.value = ParamValue::Float(18.0));
         lum.params.get_mut("contrast").map(|v| v.value = ParamValue::Float(22.0));
         lum.params.get_mut("vignette_amount").map(|v| v.value = ParamValue::Float(-1.4));

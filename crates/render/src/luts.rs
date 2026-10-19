@@ -1,6 +1,6 @@
-//! LUT resolution for Lumetri (Input LUT, Creative Look) and the built-in LUTs.
+//! LUT resolution for Color Grade (Input LUT, Creative Look) and the built-in LUTs.
 //!
-//! Lumetri stores a LUT reference as text:
+//! Color Grade stores a LUT reference as text:
 //! * `""` — none;
 //! * `lib:<id>` — a LUT in the project's LUT library (`Project::luts`, imported `.cube`/`.3dl`);
 //! * `builtin:<id>` — a LUT FilmCraft generates from code: camera log → Rec. 709 conversions
@@ -37,7 +37,7 @@ pub fn builtins() -> &'static [Builtin] {
             .filter(|c| c.is_log())
             .map(|c| Builtin { id: format!("{}-to-rec709", c.id()), label: format!("{} to Rec. 709", c.label()), kind: BuiltinKind::LogTo709(c) })
             .collect();
-        let looks = filmcraft_project::find_effect("lumetri")
+        let looks = filmcraft_project::find_effect("color_grade")
             .and_then(|d| d.param("look"))
             .and_then(|p| if let filmcraft_project::ParamKind::Choice(o) = p.kind { Some(o) } else { None })
             .unwrap_or(&[]);
@@ -98,7 +98,7 @@ fn cached(key: String, make: impl FnOnce() -> Option<Lut>) -> Option<Arc<Lut>> {
     Some(l)
 }
 
-/// Resolve a Lumetri LUT reference (see module docs). `None` for "" or unknown references.
+/// Resolve a Color Grade LUT reference (see module docs). `None` for "" or unknown references.
 pub fn resolve(project: Option<&Project>, spec: &str) -> Option<Arc<Lut>> {
     let spec = spec.trim();
     if let Some(id) = spec.strip_prefix("builtin:") {
@@ -146,7 +146,7 @@ mod tests {
         let b = builtins().iter().find(|b| b.id == "slog3-sgamut3cine-to-rec709").unwrap();
         let l = b.generate();
         // S-Log3 mid grey (code 420; the LUT sees video-range normalised values like the rest of
-        // Lumetri) → ≈ 18 % linear on the sRGB curve
+        // Color Grade) → ≈ 18 % linear on the sRGB curve
         let g = l.apply([(420.0 - 64.0) / 876.0; 3]);
         assert!((g[0] - filmcraft_color::linear_to_srgb(0.18)).abs() < 0.03, "{g:?}");
         assert!(resolve(None, "builtin:slog3-sgamut3cine-to-rec709").is_some());

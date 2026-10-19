@@ -1124,7 +1124,7 @@ pub(super) fn apply_badges(v: &mut [EffectDef]) {
                 | "focus_blur"
                 | "gaussian_blur"
                 | "asc_cdl"
-                | "lumetri"
+                | "color_grade"
                 | "video_limiter"
                 | "vignette"
                 | "magnify"
@@ -1148,7 +1148,7 @@ pub(super) fn apply_badges(v: &mut [EffectDef]) {
                 | "wiggle"
                 | "proc_amp"
         ) || folder == "Lights & Glows";
-        let yuv = matches!(id, "proc_amp" | "lumetri" | "video_limiter" | "black_white" | "alpha_adjust" | "luma_key" | "track_matte");
+        let yuv = matches!(id, "proc_amp" | "color_grade" | "video_limiter" | "black_white" | "alpha_adjust" | "luma_key" | "track_matte");
         let accel = match e.category.first().copied() {
             Some("Legacy") => !matches!(id, "camera_blur"),
             _ if folder == "Obsolete" => false,
@@ -1181,7 +1181,7 @@ mod tests {
                 "Unsharp Mask",
             ],
         ),
-        ("Color Correction", &["ASC CDL", "Brightness & Contrast", "Lumetri Color", "Tint", "Video Limiter", "Vignette"]),
+        ("Color Correction", &["ASC CDL", "Brightness & Contrast", "L Color", "Tint", "Video Limiter", "Vignette"]),
         ("Distort", &["Corner Pin", "Lens Distortion", "Magnify", "Mirror", "Spherize", "Turbulent Displace", "Twirl", "Warp Stabilizer", "Wave Warp"]),
         ("Generate", &["4-Color Gradient", "Gradient"]),
         ("Image Control", &["Black & White", "Channel Mix", "Color Pass", "Color Replace", "Gamma Correction", "Invert", "Rounded Crop"]),

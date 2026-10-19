@@ -1,4 +1,4 @@
-//! Lumetri in HDR working spaces (known cd/m² values through PQ and HLG) and HSL Secondary ▸
+//! Color Grade in HDR working spaces (known cd/m² values through PQ and HLG) and HSL Secondary ▸
 //! Refine (Denoise, Blur of the key).
 
 use filmcraft_color::{GradeSpace, REFERENCE_WHITE_NITS, WorkingSpace};
@@ -14,8 +14,8 @@ fn cx(working: WorkingSpace) -> FxCtx<'static> {
     FxCtx { t: Tick::ZERO, px_scale: 1.0, seconds: 0.0, timecode: "", clip_name: "", project: None, env: None, frame_rate: 24.0, working }
 }
 
-fn lumetri(params: &[(&str, ParamValue)]) -> EffectInstance {
-    let mut e = find_effect("lumetri").unwrap().instance();
+fn color_grade(params: &[(&str, ParamValue)]) -> EffectInstance {
+    let mut e = find_effect("color_grade").unwrap().instance();
     for (k, v) in params {
         e.params.get_mut(*k).unwrap_or_else(|| panic!("no param {k}")).value = v.clone();
     }
@@ -43,7 +43,7 @@ const LEVELS: [f32; 6] = [1.0, 26.0, 100.0, 203.0, 1000.0, 4000.0];
 
 #[test]
 fn identity_keeps_hdr_highlights_in_pq_and_hlg() {
-    let e = lumetri(&[]);
+    let e = color_grade(&[]);
     close(&grade(WorkingSpace::Rec2100Pq, &LEVELS, &e), &LEVELS, 2e-3);
     // HLG signal tops out around 12× its peak's scene light: 4000 cd/m² is still inside
     close(&grade(WorkingSpace::Rec2100Hlg, &LEVELS, &e), &LEVELS, 2e-3);
@@ -54,11 +54,11 @@ fn identity_keeps_hdr_highlights_in_pq_and_hlg() {
 
 #[test]
 fn exposure_is_stops_of_light_in_hdr() {
-    let e = lumetri(&[("exposure", F(1.0))]);
+    let e = color_grade(&[("exposure", F(1.0))]);
     let want: Vec<f32> = LEVELS.iter().map(|n| n * 2.0).collect();
     close(&grade(WorkingSpace::Rec2100Pq, &LEVELS, &e), &want, 3e-3);
     close(&grade(WorkingSpace::Rec2100Hlg, &LEVELS[..5], &e), &want[..5], 3e-3);
-    let e = lumetri(&[("exposure", F(-2.0))]);
+    let e = color_grade(&[("exposure", F(-2.0))]);
     close(&grade(WorkingSpace::Rec2100Pq, &[400.0, 4000.0], &e), &[100.0, 1000.0], 3e-3);
 }
 
@@ -67,7 +67,7 @@ fn whites_and_contrast_scale_with_hdr_white() {
     // Whites +100 stretches the signal so 85 % of HDR White becomes HDR White
     for white in [1000.0f32, 4000.0] {
         let gs = GradeSpace::new(WorkingSpace::Rec2100Pq, white);
-        let e = lumetri(&[("whites", F(100.0)), ("hdr_white", F(white as f64))]);
+        let e = color_grade(&[("whites", F(100.0)), ("hdr_white", F(white as f64))]);
         let src = gs.nits_of_signal(0.85);
         let got = grade(WorkingSpace::Rec2100Pq, &[0.0, src], &e);
         assert!(got[0].abs() < 1e-3, "black stays black");
@@ -76,7 +76,7 @@ fn whites_and_contrast_scale_with_hdr_white() {
     // Contrast pivots on the middle of the HDR White range and leaves speculars above it alone
     let gs = GradeSpace::new(WorkingSpace::Rec2100Pq, 1000.0);
     let (mid, dark, bright) = (gs.nits_of_signal(0.5), gs.nits_of_signal(0.3), gs.nits_of_signal(0.7));
-    let e = lumetri(&[("contrast", F(60.0))]);
+    let e = color_grade(&[("contrast", F(60.0))]);
     let got = grade(WorkingSpace::Rec2100Pq, &[mid, dark, bright, 4000.0], &e);
     assert!((got[0] - mid).abs() < mid * 3e-3, "pivot {mid} → {}", got[0]);
     assert!(got[1] < dark && got[2] > bright, "{got:?}");
@@ -84,23 +84,23 @@ fn whites_and_contrast_scale_with_hdr_white() {
     // the same in HLG: reference white is 75 % of a 1000 cd/m² display's signal
     let hlg = GradeSpace::new(WorkingSpace::Rec2100Hlg, 1000.0);
     assert!((hlg.signal_of_nits(203.0) - 0.75).abs() < 2e-3);
-    let e = lumetri(&[("whites", F(100.0))]);
+    let e = color_grade(&[("whites", F(100.0))]);
     let got = grade(WorkingSpace::Rec2100Hlg, &[hlg.nits_of_signal(0.85)], &e);
     assert!((got[0] - 1000.0).abs() < 4.0, "{got:?}");
 }
 
 #[test]
 fn hdr_specular_sets_highlights_above_hdr_white() {
-    let e = lumetri(&[("hdr_specular", F(-100.0))]);
+    let e = color_grade(&[("hdr_specular", F(-100.0))]);
     let got = grade(WorkingSpace::Rec2100Pq, &[203.0, 1000.0, 4000.0], &e);
     close(&got, &[203.0, 1000.0, 1000.0], 3e-3);
     let gs = GradeSpace::new(WorkingSpace::Rec2100Pq, 1000.0);
-    let e = lumetri(&[("hdr_specular", F(50.0))]);
+    let e = color_grade(&[("hdr_specular", F(50.0))]);
     let got = grade(WorkingSpace::Rec2100Pq, &[1000.0, 4000.0], &e);
     let want = gs.nits_of_signal(1.0 + (gs.signal_of_nits(4000.0) - 1.0) * 1.5);
     close(&got, &[1000.0, want], 3e-3);
     // no effect in SDR (the slider is HDR-only)
-    let sdr = grade(WorkingSpace::Rec709, &[150.0], &lumetri(&[("hdr_specular", F(-100.0))]));
+    let sdr = grade(WorkingSpace::Rec709, &[150.0], &color_grade(&[("hdr_specular", F(-100.0))]));
     assert!((sdr[0] - 150.0).abs() < 0.2);
 }
 
@@ -110,7 +110,7 @@ fn curves_span_the_hdr_range() {
     let curve = ParamValue::Curve(vec![[0.0, 0.0], [0.5, 0.6], [1.0, 1.0]]);
     for range in [1000.0f32, 2000.0] {
         let gs = GradeSpace::new(WorkingSpace::Rec2100Pq, range);
-        let e = lumetri(&[("curve_luma", curve.clone()), ("curves_hdr_range", F(range as f64))]);
+        let e = color_grade(&[("curve_luma", curve.clone()), ("curves_hdr_range", F(range as f64))]);
         let got = grade(WorkingSpace::Rec2100Pq, &[gs.nits_of_signal(0.5), range, 6000.0], &e);
         close(&got, &[gs.nits_of_signal(0.6), range, 6000.0], 4e-3);
     }
@@ -133,7 +133,7 @@ fn keyed_image() -> Image {
 
 fn key(denoise: f64, blur: f64) -> Image {
     let mut img = keyed_image();
-    let e = lumetri(&[
+    let e = color_grade(&[
         ("hsl_on", ParamValue::Bool(true)),
         ("hsl_hue", F(0.0)),
         ("hsl_hue_range", F(40.0)),
@@ -174,7 +174,7 @@ fn hsl_refine_blur_softens_the_key() {
     // the correction follows the refined key: a hue shift inside, soft at the edge
     let mut img = keyed_image();
     let e =
-        lumetri(&[("hsl_on", ParamValue::Bool(true)), ("hsl_hue", F(0.0)), ("hsl_hue_range", F(40.0)), ("hsl_hue_shift", F(120.0)), ("hsl_denoise", F(100.0))]);
+        color_grade(&[("hsl_on", ParamValue::Bool(true)), ("hsl_hue", F(0.0)), ("hsl_hue_range", F(40.0)), ("hsl_hue_shift", F(120.0)), ("hsl_denoise", F(100.0))]);
     apply(&mut img, &e, &cx(WorkingSpace::Rec709));
     let inside = img.get(20, 20);
     assert!(inside[1] > inside[0], "red turned green inside: {inside:?}");

@@ -169,7 +169,7 @@ fn hashes_are_stable_across_save_and_load() {
     let (mut p, matte, ocean, seq) = setup();
     let a = place(&mut p, seq, 0, ocean, 0, 48);
     let b = place(&mut p, seq, 1, matte, 24, 48);
-    add_fx(&mut p, seq, a, "lumetri");
+    add_fx(&mut p, seq, a, "color_grade");
     add_fx(&mut p, seq, b, "gaussian_blur");
     let q = p.sequence_mut(seq).unwrap();
     let (_, it) = q.find_item_mut(b).unwrap();
@@ -191,7 +191,7 @@ fn need_classification_none_yellow_red() {
     let b = place(&mut p, seq, 0, matte, 24, 24);
     let c = place(&mut p, seq, 0, matte, 48, 24);
     add_fx(&mut p, seq, b, "tint");
-    for fx in ["gaussian_blur", "sharpen", "lumetri", "noise"] {
+    for fx in ["gaussian_blur", "sharpen", "color_grade", "noise"] {
         add_fx(&mut p, seq, c, fx);
     }
     let s = video_segments(&p, seq);
@@ -211,9 +211,9 @@ fn need_classification_none_yellow_red() {
 
 #[test]
 fn effect_tiers_are_ordered() {
-    assert!(effect_cost_ms("lumetri") > effect_cost_ms("tint"));
+    assert!(effect_cost_ms("color_grade") > effect_cost_ms("tint"));
     assert!(effect_cost_ms("tint") > effect_cost_ms("crop"));
-    assert_eq!(effect_cost_ms("gaussian_blur"), effect_cost_ms("lumetri"));
+    assert_eq!(effect_cost_ms("gaussian_blur"), effect_cost_ms("color_grade"));
 }
 
 /// Times every standard video effect on a 1080p frame (run with `--release --ignored --nocapture`)

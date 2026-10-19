@@ -24,14 +24,14 @@ pub struct FxCtx<'a> {
     /// Formatted sequence timecode (for the Timecode effect).
     pub timecode: &'a str,
     pub clip_name: &'a str,
-    /// The project (LUT library for Lumetri); `None` in isolated effect tests.
+    /// The project (LUT library for Color Grade); `None` in isolated effect tests.
     pub project: Option<&'a filmcraft_project::Project>,
     /// The clip's surroundings (other frames, other tracks, sequence geometry) for temporal,
     /// track-reading and reframing effects; `None` in isolated tests and adjustment layers.
     pub env: Option<&'a dyn crate::vfx::FxEnv>,
     /// Sequence frame rate (shutter-angle motion blur); also known where `env` is `None`.
     pub frame_rate: f64,
-    /// The sequence's working colour space: Lumetri grades HDR (PQ / HLG) working spaces in their
+    /// The sequence's working colour space: Color Grade grades HDR (PQ / HLG) working spaces in their
     /// own signal, normalised to HDR White ([`filmcraft_color::GradeSpace`]).
     pub working: filmcraft_color::WorkingSpace,
 }
@@ -120,12 +120,12 @@ pub fn apply(img: &mut Image, e: &EffectInstance, cx: &FxCtx) {
         return;
     }
     // effects with a GPU implementation: evaluated parameters + CPU reference (`gpufx`)
-    if let Some(op) = crate::gpufx::FxOp::eval(e, cx, img.w, img.h).filter(|op| e.effect != "lumetri" || op.gpu_ok()) {
+    if let Some(op) = crate::gpufx::FxOp::eval(e, cx, img.w, img.h).filter(|op| e.effect != "color_grade" || op.gpu_ok()) {
         op.apply(img);
         return;
     }
     match e.effect.as_str() {
-        "lumetri" => lumetri(img, e, cx),
+        "color_grade" => color_grade(img, e, cx),
         "median" => {
             let r = median_radius(f(e, "radius", cx), cx.px_scale, img.w.max(img.h));
             if r > 0 {
@@ -620,7 +620,7 @@ fn within_unit(v: [f32; 3], hdr: bool, f: impl Fn([f32; 3]) -> [f32; 3]) -> [f32
     o.map(|q| q * m)
 }
 
-fn lumetri(img: &mut Image, e: &EffectInstance, cx: &FxCtx) {
+fn color_grade(img: &mut Image, e: &EffectInstance, cx: &FxCtx) {
     let (basic_on, creative_on, vignette_on) = (on(e, "basic_on"), on(e, "creative_on"), on(e, "vignette_on"));
     let input_lut = if basic_on { crate::luts::resolve(cx.project, text(e, "input_lut")) } else { None };
     let bf = |id: &str| if basic_on { f(e, id, cx) } else { 0.0 };
@@ -994,7 +994,7 @@ mod tests {
     fn identity_lumetri_is_identity() {
         let mut img = Image::filled(8, 8, [0.18, 0.3, 0.05, 1.0]);
         let before = img.clone();
-        apply(&mut img, &find_effect("lumetri").unwrap().instance(), &cx());
+        apply(&mut img, &find_effect("color_grade").unwrap().instance(), &cx());
         for (a, b) in img.px.iter().zip(&before.px) {
             assert!((a - b).abs() < 2e-3, "{a} {b}");
         }
@@ -1232,7 +1232,7 @@ fn hsl_key(v: [f32; 3], hc: f32, hr: f32, smin: f32, lmin: f32, lmax: f32, soft:
     mh * ms * ml
 }
 
-/// Lumetri ▸ HSL Secondary: key on hue / saturation / lightness, Refine (Denoise, Blur) the key,
+/// Color Grade ▸ HSL Secondary: key on hue / saturation / lightness, Refine (Denoise, Blur) the key,
 /// then correct inside it (or show the mask).
 ///
 /// - **Denoise** removes speckle from the key: a median filter (radius 1–3 px at full
@@ -1419,9 +1419,9 @@ mod lumetri_cpu_parity_tests {
     }
 
     fn effect(params: &[(&str, ParamValue)]) -> EffectInstance {
-        let mut e = find_effect("lumetri").unwrap().instance();
+        let mut e = find_effect("color_grade").unwrap().instance();
         for (k, v) in params {
-            e.params.get_mut(*k).unwrap_or_else(|| panic!("lumetri.{k}")).value = v.clone();
+            e.params.get_mut(*k).unwrap_or_else(|| panic!("color_grade.{k}")).value = v.clone();
         }
         e
     }
@@ -1541,7 +1541,7 @@ mod lumetri_cpu_parity_tests {
             let mut img_orig = test_picture(w, h);
             let mut img_copy = img_orig.clone();
 
-            lumetri(&mut img_orig, &e, &cx);
+            color_grade(&mut img_orig, &e, &cx);
 
             let op = FxOp::eval(&e, &cx, w, h).unwrap_or_else(|| panic!("{name}: eval returned None"));
             assert!(op.gpu_ok(), "{name}: expected gpu_ok == true");
@@ -1555,11 +1555,11 @@ mod lumetri_cpu_parity_tests {
                 }
                 assert!(diff <= 1e-6, "{name}: sample {i} differed: orig={orig}, copy={copy}, diff={diff:.2e} > 1e-6");
             }
-            eprintln!("{name}: max sample diff vs fn lumetri: {max_diff:.2e}");
+            eprintln!("{name}: max sample diff vs fn color_grade: {max_diff:.2e}");
         }
     }
 
-    /// #719: positive Roundness rounds the Lumetri vignette (it used to be ignored), +100
+    /// #719: positive Roundness rounds the Color Grade vignette (it used to be ignored), +100
     /// is a circle and negative values widen the oval, on the CPU path and the GPU op alike.
     #[test]
     fn lumetri_vignette_roundness_shapes_the_vignette() {
@@ -1584,9 +1584,9 @@ mod lumetri_cpu_parity_tests {
             ]);
             let grey = Image { w, h, px: [0.5, 0.5, 0.5, 1.0].repeat(w * h) };
             let mut cpu = grey.clone();
-            lumetri(&mut cpu, &e, &cx);
+            color_grade(&mut cpu, &e, &cx);
             let mut op_img = grey;
-            let op = FxOp::eval(&e, &cx, w, h).expect("lumetri op");
+            let op = FxOp::eval(&e, &cx, w, h).expect("color_grade op");
             op.apply(&mut op_img);
             for (a, b) in cpu.px.iter().zip(&op_img.px) {
                 assert!((a - b).abs() <= 1e-6, "roundness {roundness}: CPU and GPU op disagree");
